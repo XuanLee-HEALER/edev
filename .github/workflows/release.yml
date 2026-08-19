@@ -1,0 +1,144 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  # 覆盖到还在服役的 macOS 版本
+  MACOSX_DEPLOYMENT_TARGET: "11.0"
+  FORMULA_PATH: Formula/edev.rb
+
+jobs:
+  build:
+    runs-on: macos-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      sha256: ${{ steps.package.outputs.sha256 }}
+      tarball: ${{ steps.package.outputs.tarball }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # 要完整历史才能判断这个 tag 是不是长在 main 上
+          fetch-depth: 0
+
+      - name: Tag must be on main
+        run: |
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::tag ${GITHUB_REF_NAME} 不在 main 上,拒绝发版"
+            exit 1
+          fi
+
+      - name: Tag must match Cargo.toml version
+        id: meta
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          cargo_version="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)"
+          if [ "$tag_version" != "$cargo_version" ]; then
+            echo "::error::tag v${tag_version} 与 Cargo.toml 的 ${cargo_version} 不一致"
+            exit 1
+          fi
+          echo "version=${tag_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Install toolchain
+        run: |
+          rustup update --no-self-update stable
+          rustup default stable
+          rustup target add x86_64-apple-darwin aarch64-apple-darwin
+
+      - name: Build universal binary
+        run: |
+          cargo build --release --locked --target x86_64-apple-darwin
+          cargo build --release --locked --target aarch64-apple-darwin
+          mkdir -p dist
+          lipo -create -output dist/edev \
+            target/x86_64-apple-darwin/release/edev \
+            target/aarch64-apple-darwin/release/edev
+          lipo -info dist/edev
+          dist/edev --version
+
+      - name: Package
+        id: package
+        run: |
+          version="${{ steps.meta.outputs.version }}"
+          tarball="edev-${version}-macos-universal.tar.gz"
+          # GPL-2 §3:二进制分发要随附许可证,源码由 GitHub 的 tag 归档提供
+          cp LICENSE README.md README.zh-CN.md dist/
+          tar -czf "$tarball" -C dist edev LICENSE README.md README.zh-CN.md
+          sha256="$(shasum -a 256 "$tarball" | cut -d' ' -f1)"
+          echo "tarball=${tarball}" >> "$GITHUB_OUTPUT"
+          echo "sha256=${sha256}"   >> "$GITHUB_OUTPUT"
+          echo "### \`${tarball}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "sha256: \`${sha256}\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            "${{ steps.package.outputs.tarball }}"
+
+  tap:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tap
+        uses: actions/checkout@v4
+        with:
+          repository: XuanLee-HEALER/homebrew-tap
+          # 跨仓库推送用不了默认的 GITHUB_TOKEN,需要一个有 tap 仓库写权限的 PAT
+          token: ${{ secrets.TAP_TOKEN }}
+          path: tap
+
+      - name: Write formula
+        working-directory: tap
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          SHA256: ${{ needs.build.outputs.sha256 }}
+          TARBALL: ${{ needs.build.outputs.tarball }}
+        run: |
+          mkdir -p "$(dirname "$FORMULA_PATH")"
+          cat > "$FORMULA_PATH" <<EOF
+          # 由 ${GITHUB_REPOSITORY} 的 release workflow 自动生成,别手改
+          class Edev < Formula
+            desc "Diagnose and clean up services holding your local dev ports"
+            homepage "https://github.com/${GITHUB_REPOSITORY}"
+            url "https://github.com/${GITHUB_REPOSITORY}/releases/download/v${VERSION}/${TARBALL}"
+            sha256 "${SHA256}"
+            license "GPL-2.0-only"
+            version "${VERSION}"
+
+            depends_on :macos
+
+            def install
+              bin.install "edev"
+            end
+
+            test do
+              assert_match "edev #{version}", shell_output("#{bin}/edev --version")
+            end
+          end
+          EOF
+          cat "$FORMULA_PATH"
+
+      - name: Commit and push
+        working-directory: tap
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$FORMULA_PATH"
+          if git diff --cached --quiet; then
+            echo "formula 没有变化,跳过"
+            exit 0
+          fi
+          git commit -m "chore(edev): bump to ${VERSION}"
+          git push

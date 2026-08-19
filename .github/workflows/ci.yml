@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    # 必须是 macOS runner:platform/mod.rs 在其他系统上直接 compile_error!,
+    # Linux runner 连编译都过不去。
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          rustup update --no-self-update stable
+          rustup default stable
+          rustup component add rustfmt clippy
+          rustc --version && cargo --version
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      - name: Lint
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test --all-targets
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Smoke test
+        # runner 上开着什么端口不由我们决定,所以不校验具体条目,
+        # 只确认扫描路径跑得通、JSON 结构完整、子命令的 help 都能生成。
+        run: |
+          ./target/release/edev --version
+          ./target/release/edev --help > /dev/null
+          ./target/release/edev clean --help > /dev/null
+          ./target/release/edev -a --json > scan.json
+          python3 - <<'PY'
+          import json
+          r = json.load(open("scan.json"))
+          assert r["stats"]["pids_seen"] > 0, "one process scanned at least"
+          assert len(r["entries"]) == r["count"], "count mismatch"
+          for e in r["entries"]:
+              assert e["verdict"]["kind"], e
+              assert isinstance(e["addrs"], list) and e["addrs"], e
+          print("ok:", r["count"], "entries /", r["stats"]["pids_seen"], "pids")
+          PY

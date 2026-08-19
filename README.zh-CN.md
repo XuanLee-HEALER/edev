@@ -134,14 +134,31 @@ Linux 上对应的是:读 `/proc/net/tcp*` 拿 socket inode,扫 `/proc/<pid>/fd`
 argv 和 cwd 直接读 `/proc/<pid>/cmdline` 和 `/proc/<pid>/cwd` ——
 打分引擎、保护策略、渲染、清理逻辑全部原样复用。欢迎来提。
 
-## 构建
+## 安装
 
 ```bash
-cargo install --path .     # → ~/.cargo/bin/edev
+brew install XuanLee-HEALER/tap/edev
+```
+
+或者从源码装:
+
+```bash
+cargo install --git https://github.com/XuanLee-HEALER/edev
+```
+
+release 里是通用二进制(`x86_64` + `arm64`,`MACOSX_DEPLOYMENT_TARGET=11.0`),
+由 CI 从 `main` 上的 tag 构建。
+
+## 开发
+
+```bash
 cargo fmt --check
 cargo clippy --all-targets # pedantic + nursery,零警告
 cargo test
 ```
+
+CI 跑在 `macos-latest` 上 —— 只能这样,因为在别的系统上编译会直接停在
+`src/platform/mod.rs` 的 `compile_error!`。
 
 ## 参与
 

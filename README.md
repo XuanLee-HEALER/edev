@@ -141,14 +141,31 @@ back to PIDs, and direct reads of `/proc/<pid>/cmdline` and `/proc/<pid>/cwd` �
 scoring engine, protection policy, rendering, and cleanup logic are all reused
 untouched. Contributions welcome.
 
-## Building
+## Install
 
 ```bash
-cargo install --path .     # → ~/.cargo/bin/edev
+brew install XuanLee-HEALER/tap/edev
+```
+
+Or from source:
+
+```bash
+cargo install --git https://github.com/XuanLee-HEALER/edev
+```
+
+Releases ship a universal binary (`x86_64` + `arm64`, `MACOSX_DEPLOYMENT_TARGET=11.0`)
+built by CI from a tag on `main`.
+
+## Developing
+
+```bash
 cargo fmt --check
 cargo clippy --all-targets # pedantic + nursery, zero warnings
 cargo test
 ```
+
+CI runs on `macos-latest` — it has to, since building anywhere else stops at the
+`compile_error!` in `src/platform/mod.rs`.
 
 ## Contributing
 
