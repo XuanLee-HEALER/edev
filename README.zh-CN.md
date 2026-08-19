@@ -6,6 +6,8 @@
 
 **搞清楚到底是什么占着你的开发端口,然后清掉它。**
 
+名字取自 *erase dev ports*。
+
 [English](README.md)
 
 ---

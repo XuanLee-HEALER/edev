@@ -6,6 +6,8 @@
 
 **Find out what is actually holding your dev ports — then clean it up.**
 
+The name is short for *erase dev ports*.
+
 [中文文档](README.zh-CN.md)
 
 ---
