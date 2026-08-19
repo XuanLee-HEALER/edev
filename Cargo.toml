@@ -1,5 +1,5 @@
 [package]
-name = "edev"
+name = "edev-cli"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
@@ -9,6 +9,17 @@ readme = "README.md"
 repository = "https://github.com/XuanLee-HEALER/edev"
 keywords = ["cli", "ports", "devtools", "macos", "process"]
 categories = ["command-line-utilities", "development-tools"]
+# crates.io 上 edev 已被别人占用,但装出来的命令仍然叫 edev
+exclude = [".github/"]
+
+[[bin]]
+name = "edev"
+path = "src/main.rs"
+
+# docs.rs 默认在 Linux 上构建,会直接撞上 platform/mod.rs 的 compile_error!
+[package.metadata.docs.rs]
+default-target = "x86_64-apple-darwin"
+targets = ["x86_64-apple-darwin", "aarch64-apple-darwin"]
 
 [dependencies]
 clap = { version = "4.6", features = ["derive", "wrap_help"] }

@@ -147,10 +147,11 @@ untouched. Contributions welcome.
 brew install XuanLee-HEALER/tap/edev
 ```
 
-Or from source:
+Or from crates.io — the crate is `edev-cli` because `edev` was already taken,
+but the binary it installs is still `edev`:
 
 ```bash
-cargo install --git https://github.com/XuanLee-HEALER/edev
+cargo install edev-cli
 ```
 
 Releases ship a universal binary (`x86_64` + `arm64`, `MACOSX_DEPLOYMENT_TARGET=11.0`)

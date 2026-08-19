@@ -140,10 +140,11 @@ argv 和 cwd 直接读 `/proc/<pid>/cmdline` 和 `/proc/<pid>/cwd` ——
 brew install XuanLee-HEALER/tap/edev
 ```
 
-或者从源码装:
+或者从 crates.io 装 —— crate 叫 `edev-cli`(`edev` 已被别人占用),
+但装出来的命令仍然是 `edev`:
 
 ```bash
-cargo install --git https://github.com/XuanLee-HEALER/edev
+cargo install edev-cli
 ```
 
 release 里是通用二进制(`x86_64` + `arm64`,`MACOSX_DEPLOYMENT_TARGET=11.0`),
