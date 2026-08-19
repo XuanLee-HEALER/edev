@@ -1,0 +1,48 @@
+[package]
+name = "edev"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Diagnose and clean up services holding your local dev ports"
+license = "GPL-2.0-only"
+readme = "README.md"
+repository = "https://github.com/XuanLee-HEALER/edev"
+keywords = ["cli", "ports", "devtools", "macos", "process"]
+categories = ["command-line-utilities", "development-tools"]
+
+[dependencies]
+clap = { version = "4.6", features = ["derive", "wrap_help"] }
+libc = "0.2"
+libproc = "0.14"
+rayon = "1.12"
+rustc-hash = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "warn"
+missing_debug_implementations = "warn"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+# 允许:命中率低、噪音大
+module_name_repetitions = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+multiple_crate_versions = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+cast_precision_loss = "allow"
+option_if_let_else = "allow"
+# clap 的 flag 结构天然一堆 bool
+struct_excessive_bools = "allow"
+# FFI:u32 pid / u64 epoch 转 i32 / time_t,值域内安全
+cast_possible_wrap = "allow"
